@@ -374,3 +374,152 @@ Limitações:
 - O grupo "CE privadas" é pequeno e concentrado em uma instituição (ver a seção de perfil). Diferenças contra ele devem ser lidas com cautela.
 - A média de uma questão vale só para quem a avaliou. Questões com muitas respostas "não sei" ou "não se aplica", como QE_I65, QE_I53 e QE_I52, têm menos respondentes válidos e conclusões mais frágeis.
 - São dados de percepção de concluintes em duas edições. Eles indicam associação e diferença entre grupos, não causa.
+
+## Participação no exame
+
+A análise de participação responde às perguntas da seção 5.5 do plano de trabalho: **(1)** qual a proporção de estudantes inscritos que compareceram e tiveram participação válida e **(2)** quantas provas foram entregues em branco ou com apenas parte das questões respondidas. Além disso, avalia se a ausência e o preenchimento parcial (sobretudo nas questões discursivas) diferem dos demais cursos do Ceará e do Brasil e qual o seu efeito direto nas notas do curso.
+
+O script `src/participacao.py` lê os arquivos `arq1` (identificação do curso) e `arq3` (presença, vetores de respostas objetivas, situação das questões discursivas e notas) diretamente de `data/raw` (ou `../raw`), aceitando tanto pastas extraídas (`microdados_Enade_<ano>_LGPD`) quanto arquivos `.zip`. Com o ambiente ativado:
+
+```bash
+python src/participacao.py
+```
+
+### Variáveis utilizadas
+
+Todas as variáveis de participação estão no `arq3` de cada edição, ligadas ao `arq1` por `CO_CURSO`:
+
+| Variável | Descrição no dicionário do INEP | Códigos considerados |
+| -------- | ------------------------------- | -------------------- |
+| `TP_PRES` | Tipo de presença no ENADE | `555` = Presente com resultado válido; `222` = Ausente; `444` = Ausente por dupla graduação; `334` = Eliminado; `556` / `888` = Resultado desconsiderado pela aplicadora |
+| `TP_PR_GER` | Tipo de presença na prova (geral) | `555` = Participação com respostas válidas; `333` = Participação com **prova inteira em branco** (nota zero); `222` = Ausente |
+| `TP_PR_OB_FG` e `TP_PR_OB_CE` | Presença nas partes **objetivas** de Formação Geral (FG) e Componente Específico (CE) | `555` = Respostas válidas; `333` = Caderno objetivo inteiro em branco |
+| `TP_PR_DI_FG` e `TP_PR_DI_CE` | Presença nas partes **discursivas** de Formação Geral (FG) e Componente Específico (CE) | `555` = Respostas válidas; `333` = Caderno discursivo inteiro em branco (nota zero no componente discursivo) |
+| `TP_SFG_D1`, `TP_SFG_D2` e `TP_SCE_D1` a `TP_SCE_D3` | Situação individual das 2 questões discursivas de FG e das 3 de CE (2008 a 2021) | `555` = Questão com resultado válido; `333` = Questão em branco (nota zero); `335` = Resposta nula; `336` = Divergente da temática |
+| `DS_VT_ESC_OFG` e `DS_VT_ESC_OCE` | Vetores de escolhas nas questões objetivas de FG (8 itens) e CE (27 itens) | `A` a `E` = alternativa marcada; `.` = **questão em branco**; `*` = múltipla marcação |
+
+Cuidados adotados:
+
+- **Questões aplicáveis nos vetores objetivos (`2005`, `2008` e `2011`):** nas edições mais antigas, o vetor `DS_VT_ESC_OCE` continha posições de outras subáreas ou habilitações de Computação, identificadas por `Z` no vetor de acerto (`DS_VT_ACE_OCE`) ou por `N`/espaço no gabarito (`DS_VT_GAB_OCE_FIN`). O script contabiliza respostas em branco (`.`) apenas nas posições efetivamente aplicáveis a Ciência da Computação (`0`, `1`, `8` ou `9` no vetor de acerto).
+- **Classificação do preenchimento da prova entre os presentes (`TP_PRES = 555`):** cada concluinte presente é classificado em três categorias mutuamente exclusivas: **(a) prova totalmente em branco** (`TP_PR_GER = 333`), **(b) prova parcialmente respondida** (`TP_PR_GER = 555`, mas com ao menos uma questão objetiva aplicável com `.` ou uma questão discursiva com código `333`), e **(c) prova 100% respondida** (todas as questões objetivas e discursivas respondidas).
+- **Cruzamento com as notas sem violar a anonimização:** como `TP_PR_*` e `NT_*` estão no mesmo registro do `arq3`, é possível comparar diretamente a nota média de quem respondeu às questões discursivas com a de quem as deixou em branco. Nas edições amostrais (`2005` e `2008`), são filtrados apenas concluintes (`TP_INSCRICAO = 0`) e as médias de notas usam `PESO_AMOSTRA`, mantendo correspondência exata com a seção de desempenho acadêmico.
+
+### Série histórica da Unifor (2005 a 2021)
+
+**Presença e participação geral entre os inscritos da Unifor**
+
+| Edição | Inscritos | Presentes (`TP_PRES=555`) | % Presentes | Ausentes (`TP_PRES=222`) | % Ausentes | Com resposta válida (`TP_PR_GER=555`) | Prova inteira em branco (`TP_PR_GER=333`) |
+| -----: | --------: | ------------------------: | ----------: | -----------------------: | ---------: | ------------------------------------: | ----------------------------------------: |
+| 2005 | 31 | 22 | 71,0% | 9 | 29,0% | 22 (71,0% dos inscritos) | 0 (0,0%) |
+| 2008 | 50 | 42 | 84,0% | 8 | 16,0% | 41 (82,0% dos inscritos) | 1 (2,4% dos presentes) |
+| 2011 | 72 | 49 | 68,1% | 23 | 31,9% | 48 (66,7% dos inscritos) | 1 (2,0% dos presentes) |
+| 2014 | 43 | 32 | 74,4% | 11 | 25,6% | 32 (74,4% dos inscritos) | 0 (0,0%) |
+| 2017 | 78 | 67 | 85,9% | 11 | 14,1% | 67 (85,9% dos inscritos) | 0 (0,0%) |
+| 2021 | 94 | 67 | 71,3% | 27 | 28,7% | 67 (71,3% dos inscritos) | 0 (0,0%) |
+
+**Provas em branco por componente e preenchimento parcial (percentuais sobre os presentes da Unifor)**
+
+| Edição | Presentes | Objetiva Formação Geral em branco | Objetiva Específica em branco | Discursiva Formação Geral toda em branco | Discursiva Específica toda em branco | Algum caderno discursivo todo em branco | Alguma questão objetiva em branco | Alguma questão discursiva em branco | Prova parcial | Prova 100% respondida |
+| -----: | --------: | --------------------------------: | ----------------------------: | ---------------------------------------: | -----------------------------------: | --------------------------------------: | --------------------------------: | ----------------------------------: | ------------: | --------------------: |
+| 2005 | 22 | 1 (4,5%) | 3 (13,6%) | 9 (40,9%) | 0 (0,0%) | 9 (40,9%) | 6 (27,3%) | 9 (40,9%)* | 11 (50,0%)* | 11 (50,0%)* |
+| 2008 | 42 | 1 (2,4%) | 1 (2,4%) | 18 (42,9%) | 16 (38,1%) | 22 (52,4%) | 9 (21,4%) | 31 (73,8%) | 31 (73,8%) | 10 (23,8%) |
+| 2011 | 49 | 1 (2,0%) | 1 (2,0%) | 9 (18,4%) | 15 (30,6%) | 15 (30,6%) | 4 (8,2%) | 49 (100,0%) | 48 (98,0%) | 0 (0,0%) |
+| 2014 | 32 | 0 (0,0%) | 0 (0,0%) | 6 (18,8%) | 6 (18,8%) | 8 (25,0%) | 1 (3,1%) | 20 (62,5%) | 20 (62,5%) | 12 (37,5%) |
+| 2017 | 67 | 0 (0,0%) | 0 (0,0%) | 17 (25,4%) | 7 (10,4%) | 17 (25,4%) | 0 (0,0%) | 42 (62,7%) | 42 (62,7%) | 25 (37,3%) |
+| 2021 | 67 | 0 (0,0%) | 0 (0,0%) | 11 (16,4%) | 8 (11,9%) | 12 (17,9%) | 2 (3,0%) | 42 (62,7%) | 42 (62,7%) | 25 (37,3%) |
+
+\* Em 2005 a prova compartilhava questões discursivas numeradas de `D1` a `D18` entre subáreas de Computação; por isso o indicador discursivo daquela edição usa os cadernos `TP_PR_DI_FG` e `TP_PR_DI_CE`.
+
+**Detalhamento por caderno da prova nas duas últimas edições (Unifor, 2017 e 2021)**
+
+| Edição | Componente da prova | Presentes | Todas respondidas | Respondida parcialmente | Caderno inteiro em branco |
+| -----: | ------------------- | --------: | ----------------: | ----------------------: | ------------------------: |
+| 2017 | Objetiva de Formação Geral (8 questões) | 67 | 67 (100,0%) | 0 (0,0%) | 0 (0,0%) |
+| 2017 | Objetiva Específica de Computação (27 questões) | 67 | 67 (100,0%) | 0 (0,0%) | 0 (0,0%) |
+| 2017 | Discursiva de Formação Geral (2 questões) | 67 | 40 (59,7%) | 10 (14,9%) | 17 (25,4%) |
+| 2017 | Discursiva Específica de Computação (3 questões) | 67 | 31 (46,3%) | 29 (43,3%) | 7 (10,4%) |
+| 2021 | Objetiva de Formação Geral (8 questões) | 67 | 67 (100,0%) | 0 (0,0%) | 0 (0,0%) |
+| 2021 | Objetiva Específica de Computação (27 questões) | 67 | 65 (97,0%) | 2 (3,0%) | 0 (0,0%) |
+| 2021 | Discursiva de Formação Geral (2 questões) | 67 | 51 (76,1%) | 5 (7,5%) | 11 (16,4%) |
+| 2021 | Discursiva Específica de Computação (3 questões) | 67 | 25 (37,3%) | 34 (50,7%) | 8 (11,9%) |
+
+### Comparação agregada com o Ceará e o Brasil por rede (2017 e 2021)
+
+Todas as comparações contrastam a **Unifor** com os demais cursos de Ciência da Computação agregados por rede (**públicas**, **privadas** e **geral** [junção de públicas + privadas]). **Em todos os grupos de privadas e geral, a Unifor é excluída do cálculo** para evitar sobreposição (`data/processed/participacao/participacao_resumo_grupos.csv`):
+
+| Edição | Grupo | Cursos | IES | Inscritos | Presentes | % Presença | Prova geral em branco | Discursiva Formação Geral em branco | Discursiva Específica em branco | Algum caderno discursivo em branco | Prova parcial | Prova 100% respondida |
+| -----: | ----- | -----: | --: | --------: | --------: | ---------: | --------------------: | ----------------------------------: | ------------------------------: | ---------------------------------: | ------------: | --------------------: |
+| 2017 | **Unifor** | 1 | 1 | 78 | 67 | **85,9%** | 0,0% | **25,4%** | **10,4%** | **25,4%** | **62,7%** | **37,3%** |
+| 2017 | CE públicas | 5 | 3 | 158 | 147 | 93,0% | 0,7% | 4,1% | 7,5% | 10,2% | 50,3% | 49,0% |
+| 2017 | CE privadas | 4 | 4 | 138 | 121 | 87,7% | 0,0% | 19,0% | 20,7% | 28,9% | 61,2% | 38,8% |
+| 2017 | CE geral | 9 | 7 | 296 | 268 | 90,5% | 0,4% | 10,8% | 13,4% | 18,7% | 55,2% | 44,4% |
+| 2017 | Brasil públicas | 120 | 86 | 4.262 | 3.784 | 88,8% | 0,2% | 13,2% | 10,4% | 19,5% | 48,7% | 51,1% |
+| 2017 | Brasil privadas | 190 | 151 | 5.846 | 4.640 | 79,4% | 0,1% | 9,9% | 26,0% | 30,1% | 63,6% | 36,3% |
+| 2017 | Brasil geral | 310 | 237 | 10.108 | 8.424 | 83,3% | 0,2% | 11,4% | 19,0% | 25,3% | 56,9% | 42,9% |
+| 2021 | **Unifor** | 1 | 1 | 94 | 67 | **71,3%** | 0,0% | **16,4%** | **11,9%** | **17,9%** | **62,7%** | **37,3%** |
+| 2021 | CE públicas | 8 | 3 | 301 | 249 | 82,7% | 0,0% | 15,7% | 19,7% | 26,5% | 72,3% | 27,7% |
+| 2021 | CE privadas | 5 | 5 | 94 | 68 | 72,3% | 0,0% | 10,3% | 16,2% | 22,1% | 64,7% | 35,3% |
+| 2021 | CE geral | 13 | 8 | 395 | 317 | 80,3% | 0,0% | 14,5% | 18,9% | 25,6% | 70,7% | 29,3% |
+| 2021 | Brasil públicas | 124 | 93 | 5.647 | 4.531 | 80,2% | 0,04% | 13,0% | 12,3% | 20,4% | 61,1% | 38,9% |
+| 2021 | Brasil privadas | 204 | 153 | 6.992 | 5.395 | 77,2% | 0,1% | 14,0% | 27,0% | 32,0% | 70,9% | 29,0% |
+| 2021 | Brasil geral | 328 | 246 | 12.639 | 9.926 | 78,5% | 0,1% | 13,5% | 20,3% | 26,7% | 66,4% | 33,5% |
+
+**Testes estatísticos (Exato de Fisher bilateral, com correção de Holm para 30 comparações por edição):**
+
+| Edição | Indicador | Comparação | Unifor | Grupo | Diferença (p.p.) | p bruto | p (Holm) | V de Cramér |
+| -----: | --------- | ---------- | -----: | ----: | ---------------: | ------: | -------: | ----------: |
+| 2017 | Discursiva de Formação Geral em branco | Unifor × CE públicas | 25,4% | 4,1% | +21,3 | **< 0,001** | **< 0,001** | 0,32 |
+| 2017 | Discursiva de Formação Geral em branco | Unifor × Brasil privadas | 25,4% | 9,9% | +15,5 | **< 0,001** | **0,007** | 0,06 |
+| 2017 | Discursiva de Formação Geral em branco | Unifor × Brasil geral | 25,4% | 11,4% | +14,0 | **0,001** | **0,040** | 0,04 |
+| 2017 | Discursiva Específica em branco | Unifor × Brasil privadas | 10,4% | 26,0% | −15,5 | **0,003** | 0,076 | 0,04 |
+| 2017 | Discursiva de Formação Geral em branco | Unifor × CE geral | 25,4% | 10,8% | +14,6 | **0,005** | 0,119 | 0,17 |
+| 2017 | Algum caderno discursivo em branco | Unifor × CE públicas | 25,4% | 10,2% | +15,2 | **0,007** | 0,163 | 0,20 |
+| 2017 | Discursiva de Formação Geral em branco | Unifor × Brasil públicas | 25,4% | 13,2% | +12,2 | **0,010** | 0,235 | 0,05 |
+| 2017 | Prova parcial ou em branco | Unifor × Brasil públicas | 62,7% | 48,9% | +13,8 | **0,027** | 0,614 | 0,04 |
+| 2021 | Discursiva Específica em branco | Unifor × Brasil privadas | 11,9% | 27,0% | −15,1 | **0,005** | 0,151 | 0,04 |
+| 2021 | Algum caderno discursivo em branco | Unifor × Brasil privadas | 17,9% | 32,0% | −14,1 | **0,012** | 0,352 | 0,03 |
+| 2021 | Presença no exame | Unifor × CE públicas | 71,3% | 82,7% | −11,5 | **0,018** | 0,515 | 0,12 |
+| 2021 | Presença no exame | Unifor × Brasil públicas | 71,3% | 80,2% | −9,0 | **0,037** | 0,993 | 0,03 |
+
+Em negrito, valores-p menores que 0,05. Todos os 60 resultados detalhados constam em `data/processed/participacao/participacao_testes_comparacao.csv`.
+
+### Impacto da entrega de discursivas em branco na nota geral (`NT_GER`) no Ceará
+
+Como o caderno discursivo representa 40% da nota de Formação Geral (`NT_FG`) e 15% da nota de Componente Específico (`NT_CE`), entregar um caderno discursivo em branco atribui nota zero a essa parcela. A tabela abaixo compara a nota geral média (`NT_GER`) em **2021** segundo o preenchimento dos cadernos discursivos nos grupos do Ceará (`data/processed/participacao/participacao_impacto_notas_grupos.csv`):
+
+| Grupo no Ceará (ENADE 2021) | Respondeu aos 2 cadernos discursivos (`n` / `NT_GER`) | Deixou ≥ 1 caderno discursivo em branco (`n` / `NT_GER`) | Diferença na nota geral (`NT_GER`) | Média de todos os presentes com nota válida (`n` / `NT_GER`) | Perda na média do grupo causada pelos cadernos em branco |
+| --------------------------- | ----------------------------------------------------: | -------------------------------------------------------: | ---------------------------------: | -----------------------------------------------------------: | -------------------------------------------------------: |
+| **Unifor** | n = 55 → **42,83** | n = 12 → **30,42** | −12,41 pts | n = 67 → **40,61** | −2,22 pts |
+| CE públicas | n = 183 → 38,83 | n = 66 → 32,43 | −6,40 pts | n = 249 → 37,13 | −1,70 pts |
+| CE privadas | n = 53 → 39,48 | n = 15 → 34,84 | −4,64 pts | n = 68 → 38,45 | −1,03 pts |
+| CE geral | n = 236 → 38,97 | n = 81 → 32,88 | −6,09 pts | n = 317 → 37,41 | −1,56 pts |
+
+Na série histórica da **Unifor** (`2005` a `2021`), o impacto de deixar ao menos um caderno discursivo em branco foi consistente em todas as edições:
+- **2005:** 45,57 (respondeu aos 2 cadernos, $n=13$) vs. 31,12 (algum caderno em branco, $n=9$) → média oficial 39,66 (−5,91 pts).
+- **2008:** 48,52 ($n=20$) vs. 32,63 ($n=22$) → média oficial 40,20 (−8,32 pts).
+- **2011:** 50,10 ($n=34$) vs. 34,03 ($n=15$) → média oficial 45,18 (−4,92 pts).
+- **2014:** 55,67 ($n=24$) vs. 42,65 ($n=8$) → média oficial 52,42 (−3,25 pts).
+- **2017:** 49,27 ($n=50$) vs. 36,41 ($n=17$) → média oficial 46,01 (−3,26 pts).
+- **2021:** 42,83 ($n=55$) vs. 30,42 ($n=12$) → média oficial 40,61 (−2,22 pts).
+
+### Interpretação
+
+- **Presença no exame (Pergunta 1):** historicamente, a presença dos concluintes da Unifor oscila entre **68,1% (2011)** e **85,9% (2017)**. Em **2017**, a presença da Unifor (**85,9%**) superou a média nacional geral (83,3%) e as privadas nacionais (79,4%), ficando próxima das privadas do Ceará (87,7%). Na edição de **2021** (realizada em contexto pós-pandemia), houve queda generalizada de presença em todo o país: na Unifor compareceram **67 dos 94 inscritos (71,3%)**, patamar praticamente idêntico ao das demais **privadas do Ceará (72,3%)**, mas inferior ao das **públicas do Ceará (82,7%)**, do **CE geral (80,3%)**, das **públicas do Brasil (80,2%)** e do **Brasil geral (78,5%)**.
+- **Provas totalmente em branco vs. parcialmente respondidas (Pergunta 2):** desde **2014**, **nenhum estudante presente da Unifor entregou a prova inteira em branco** (ocorreu apenas para 1 aluno em 2008 e 1 em 2011), e quase 100% dos presentes preenchem todas as 35 questões objetivas (em 2021, 65 de 67 presentes responderam a todas as objetivas). O preenchimento parcial concentra-se nas **questões discursivas**:
+  - Tanto em **2017** quanto em **2021**, exatamente **37,3%** dos presentes da Unifor responderam a 100% da prova e **62,7%** deixaram ao menos uma questão em branco. Em **2021**, a taxa de provas 100% respondidas da Unifor (**37,3%**) superou todos os grupos do Ceará (**CE públicas com 27,7%**, **CE privadas com 35,3%** e **CE geral com 29,3%**), além de superar **Brasil privadas (29,0%)** e **Brasil geral (33,5%)**, ficando próxima apenas de **Brasil públicas (38,9%)**.
+  - No caderno **Discursivo de Formação Geral** (2 questões), a Unifor tinha **25,4%** de abandono total em 2017 (diferença estatisticamente significativa após Holm contra CE públicas, Brasil privadas e Brasil geral), mas reduziu essa taxa para **16,4%** em 2021, alinhando-se a CE públicas (15,7%), CE geral (14,5%) e Brasil geral (13,5%).
+  - No caderno **Discursivo Específico de Computação** (3 questões), a Unifor apresenta historicamente **menor abandono total do caderno** do que as demais redes do estado e do país: em **2021**, apenas **11,9%** dos presentes da Unifor deixaram o caderno discursivo específico inteiro em branco, contra **19,7% em CE públicas**, **16,2% em CE privadas**, **18,9% em CE geral**, **27,0% em Brasil privadas** ($p = 0,005$) e **20,3% em Brasil geral**.
+- **Efeito nas notas do curso no Ceará:** em 2021, considerando todos os presentes com nota válida, a média geral da Unifor (**40,61**) superou todas as agregações do Ceará (**CE públicas com 37,13**, **CE privadas com 38,45** e **CE geral com 37,41**). Quando se observam apenas os estudantes que responderam aos dois cadernos discursivos, a média da Unifor sobe para **42,83** (contra **30,42** dos 12 alunos que deixaram algum caderno discursivo em branco).
+
+Possíveis encaminhamentos para a coordenação:
+
+- **Foco na resolução das questões discursivas na preparação para o ENADE:** como quase 100% dos presentes já respondem a todas as questões objetivas, o ganho mais rápido e direto de nota para a Unifor está em reduzir os 17,9% de alunos que deixam cadernos discursivos inteiros em branco e os 50,7% que deixam 1 ou 2 discursivas específicas sem resposta. Orientar os concluintes sobre o peso das discursivas (40% na Formação Geral e 15% no Componente Específico) pode recuperar de 2 a 3 pontos na média geral do curso.
+- **Redução da abstenção no dia do exame:** como a presença da Unifor em 2021 (71,3%) acompanhou as privadas do estado (72,3%) mas ficou cerca de 11 pontos percentuais abaixo das públicas do Ceará (82,7%), ações de acompanhamento junto aos concluintes (especialmente os que trabalham 40h semanais) ajudam a elevar o comparecimento.
+
+Limitações:
+
+- Os estudantes ausentes (`TP_PRES = 222`) não têm nota nem respostas de prova; não é possível saber se teriam desempenho superior ou inferior ao dos presentes.
+- A diferença de nota entre quem responde e quem deixa as discursivas em branco combina dois efeitos que os microdados não permitem separar: a perda mecânica dos pontos da questão em branco (nota zero no item) e a possibilidade de que estudantes com maior domínio do conteúdo também tenham maior propensão a responder às questões abertas.
+
+Os arquivos e gráficos gerados ficam em `data/processed/participacao/`: `participacao_historico_unifor.csv`, `participacao_resumo_grupos.csv`, `participacao_detalhe_componentes_grupos.csv`, `participacao_testes_comparacao.csv`, `participacao_impacto_notas_grupos.csv`, `situacao_presenca_2017.png`, `situacao_presenca_2021.png`, `participacao_comparacao_grupos_2017.png`, `participacao_comparacao_grupos_2021.png`, `participacao_evolucao_comparativa.png`, `participacao_preenchimento_discursivas_2021.png` e `participacao_impacto_notas_grupos_2021.png`.
+
