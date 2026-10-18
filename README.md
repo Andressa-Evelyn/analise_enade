@@ -249,3 +249,128 @@ O microdado não traz o nome das instituições, por isso elas aparecem pelo `CO
 Limitações: os grupos de comparação são pequenos (sobretudo as privadas, com 4 de 5 IES abaixo de 20 concluintes), os dados são de uma única edição e os testes indicam associação, não causa. As variáveis do questionário dependem de quem respondeu (86% dos inscritos da Unifor).
 
 Os resultados ficam em `data/processed/perfil_2021/`: `comparacao_ceara_testes.csv` (estatísticas, valores-p brutos e ajustados, efeitos e menor frequência esperada), `comparacao_ceara_grupos.csv` e `comparacao_ceara_por_ies.csv`.
+
+## Percepção dos estudantes sobre o curso
+
+A análise de percepção usa as respostas dos concluintes ao Questionário do Estudante sobre o processo formativo (`QE_I27` a `QE_I68`, 42 afirmações sobre organização didático-pedagógica, infraestrutura e oportunidades de formação). Ela cobre as edições de 2017 e 2021 do ENADE, a mais recente com Ciência da Computação e microdados publicados e a anterior. O texto das 42 afirmações é idêntico nas duas edições, então elas são comparáveis. Em ambas, as questões ficam juntas no `arq4` dos microdados.
+
+Como ler as respostas: a escala vai de 1 (discordo totalmente) a 6 (concordo totalmente). O código 7 significa "não sei responder" e o 8, "não se aplica". Os códigos 7 e 8 e as respostas em branco ficam fora das médias, das porcentagens e dos testes, e são reportados à parte. A **média** é a média das notas de 1 a 6; a **concordância** é a proporção de notas 4, 5 e 6 entre quem deu nota de 1 a 6.
+
+Os grupos seguem a lógica das seções anteriores: **Unifor**, **CE privadas**, **CE públicas** e **Brasil** (todos os cursos de Ciência da Computação, incluindo a Unifor). Nos testes, a Unifor também é comparada com **CE demais** (todos os cursos do Ceará, exceto a Unifor) e com **Brasil (exceto Unifor)**, para que ela não apareça dos dois lados da comparação.
+
+### Como executar
+
+O `extrair_percepcao.py` lê os ZIPs de 2017 e 2021 em `data/raw` e gera as contagens por curso, questão e resposta. Os três scripts seguintes leem só esse CSV, então não precisam de `data/raw`. Com o ambiente das seções anteriores ativado (no Windows, `.venv\Scripts\Activate.ps1`):
+
+```bash
+python -m pip install -r requirements.txt   # inclui openpyxl, usado para ler o dicionário do INEP
+python src/extrair_percepcao.py             # só para regenerar as contagens; exige data/raw
+python src/percepcao.py                     # resumo por questão, grupo e edição
+python src/percepcao_ranking.py             # ranking e gráficos das questões da Unifor
+python src/percepcao_comparacao.py          # testes da Unifor contra os demais grupos
+```
+
+| Script | O que faz | Saídas em `data/processed/percepcao/` |
+| ------ | --------- | ------------------------------------- |
+| `extrair_percepcao.py` | Extrai as contagens de respostas por curso e copia a documentação do INEP | `percepcao_contagens_por_curso.csv`, `mapa_questoes_arquivos.csv`, `lista_arquivos_fonte.csv` |
+| `percepcao.py` | Calcula média, concordância, discordância e respostas "não sei"/"não se aplica" | `percepcao_resumo_por_grupo.csv` |
+| `percepcao_ranking.py` | Ordena as 42 questões da Unifor e desenha as 5 melhores e as 5 piores | `percepcao_ranking_unifor.csv`, `percepcao_ranking_unifor_2017.png`, `percepcao_ranking_unifor_2021.png` |
+| `percepcao_comparacao.py` | Compara a Unifor com os outros grupos, questão por questão | `percepcao_comparacao_unifor.csv`, `percepcao_comparacao_ce_demais_2017.png`, `percepcao_comparacao_ce_demais_2021.png` |
+
+Cuidados adotados:
+
+- Os arquivos do INEP são anonimizados e separados por variável. As análises são agregadas por grupo de cursos e não ligam as respostas de um mesmo estudante a outras variáveis, como renda ou nota.
+- Cada questão tem um número diferente de respondentes válidos, porque quem não avaliou (em branco, "não sei" ou "não se aplica") sai do cálculo. Os tamanhos estão na tabela abaixo e, por questão, em `n_validos`.
+- O texto de cada questão vem do dicionário de variáveis do INEP (`documentacao/2021`).
+
+### Respondentes
+
+| Grupo | 2017: inscritos | 2017: respondentes válidos por questão | 2021: inscritos | 2021: respondentes válidos por questão |
+| ----- | --------------: | -------------------------------------: | --------------: | -------------------------------------: |
+| Unifor | 78 | 54 a 68 | 94 | 47 a 81 |
+| CE privadas | 138 | 89 a 122 | 94 | 48 a 74 |
+| CE públicas | 158 | 85 a 150 | 301 | 176 a 277 |
+| Brasil | 10.186 | 6.318 a 8.792 | 12.733 | 7.845 a 10.975 |
+
+### Resultados
+
+**Questões mais bem e mais mal avaliadas pela Unifor.** A tabela mostra as 5 melhores e as 5 piores médias de cada edição. A coluna "Não sei / não se aplica" é a porcentagem de respostas 7 e 8 entre quem respondeu à questão.
+
+ENADE 2021:
+
+| Posição | Questão | Tema | Média | Concordância | Respondentes válidos | Não sei / não se aplica |
+| ------: | ------- | ---- | ----: | -----------: | -------------------: | ----------------------: |
+| 1 | QE_I43 | Atividades de extensão | 5,06 | 87,2% | 78 | 3,7% |
+| 2 | QE_I44 | Iniciação científica | 5,03 | 85,0% | 80 | 1,2% |
+| 3 | QE_I42 | Dedicação exigida pelo curso | 5,00 | 91,3% | 80 | 1,2% |
+| 4 | QE_I32 | Aprender a trabalhar em equipe | 4,89 | 85,2% | 81 | 0,0% |
+| 5 | QE_I50 | Estágio supervisionado | 4,79 | 82,9% | 70 | 13,6% |
+| 38 | QE_I48 | Atividades práticas suficientes | 3,70 | 60,5% | 81 | 0,0% |
+| 39 | QE_I62 | Equipamentos das aulas práticas para a quantidade de estudantes | 3,65 | 57,5% | 80 | 1,2% |
+| 40 | QE_I65 | Biblioteca virtual | 3,36 | 46,8% | 47 | 42,0% |
+| 41 | QE_I52 | Intercâmbio e estágio no país | 3,30 | 45,9% | 61 | 24,7% |
+| 42 | QE_I53 | Intercâmbio e estágio fora do país | 2,47 | 24,1% | 58 | 28,4% |
+
+ENADE 2017:
+
+| Posição | Questão | Tema | Média | Concordância | Respondentes válidos | Não sei / não se aplica |
+| ------: | ------- | ---- | ----: | -----------: | -------------------: | ----------------------: |
+| 1 | QE_I44 | Iniciação científica | 5,04 | 88,2% | 68 | 0,0% |
+| 2 | QE_I36 | Aprender e atualizar-se permanentemente | 4,95 | 87,9% | 66 | 2,9% |
+| 3 | QE_I42 | Dedicação exigida pelo curso | 4,87 | 86,8% | 68 | 0,0% |
+| 4 | QE_I32 | Aprender a trabalhar em equipe | 4,85 | 89,7% | 68 | 0,0% |
+| 5 | QE_I58 | Uso de tecnologias da informação pelos professores | 4,84 | 82,4% | 68 | 0,0% |
+| 38 | QE_I48 | Atividades práticas suficientes | 3,39 | 49,3% | 67 | 1,5% |
+| 39 | QE_I62 | Equipamentos das aulas práticas para a quantidade de estudantes | 3,39 | 53,7% | 67 | 1,5% |
+| 40 | QE_I61 | Condições das salas de aula | 3,25 | 48,5% | 68 | 0,0% |
+| 41 | QE_I65 | Biblioteca virtual | 2,85 | 37,0% | 54 | 20,6% |
+| 42 | QE_I64 | Biblioteca: referências bibliográficas | 2,77 | 30,7% | 62 | 8,8% |
+
+**Comparação com os outros cursos.** Cada questão foi comparada pelo teste de Mann-Whitney (bilateral) sobre as notas de 1 a 6. Os valores-p foram ajustados pelo método de Holm, separadamente para cada edição e comparação (42 testes em cada), com nível de 5%. O efeito é a correlação rank-biserial: negativa quando a Unifor tende a dar notas mais baixas que o grupo de comparação. A tabela mostra em quantas das 42 questões a Unifor difere. Em nenhuma comparação ela ficou significativamente acima.
+
+| Comparação | 2017: Unifor menor | 2017: sem diferença | 2021: Unifor menor | 2021: sem diferença |
+| ---------- | -----------------: | ------------------: | -----------------: | ------------------: |
+| Unifor x CE privadas | 41 | 1 | 24 | 18 |
+| Unifor x CE públicas | 22 | 20 | 32 | 10 |
+| Unifor x CE demais | 35 | 7 | 32 | 10 |
+| Unifor x Brasil (exceto Unifor) | 28 | 14 | 23 | 19 |
+
+Em 2021, 22 das 42 questões aparecem como "Unifor menor" nas quatro comparações ao mesmo tempo. As maiores diferenças em relação ao restante do Ceará (CE demais) em 2021 são estas:
+
+| Questão | Tema | Unifor | CE demais | Brasil (exceto Unifor) | Diferença | p (Holm) | Efeito |
+| ------- | ---- | -----: | --------: | ---------------------: | --------: | -------: | -----: |
+| QE_I65 | Biblioteca virtual | 3,36 | 5,24 | 5,12 | −1,88 | < 0,001 | −0,54 |
+| QE_I62 | Equipamentos das aulas práticas | 3,65 | 5,08 | 4,89 | −1,43 | < 0,001 | −0,55 |
+| QE_I63 | Ambientes e equipamentos das aulas práticas adequados ao curso | 3,85 | 5,14 | 5,00 | −1,29 | < 0,001 | −0,49 |
+| QE_I59 | Quantidade de funcionários de apoio | 3,93 | 5,21 | 4,95 | −1,28 | < 0,001 | −0,48 |
+| QE_I64 | Biblioteca: referências bibliográficas | 3,94 | 5,14 | 5,19 | −1,20 | < 0,001 | −0,42 |
+| QE_I48 | Atividades práticas suficientes | 3,70 | 4,77 | 4,50 | −1,07 | < 0,001 | −0,45 |
+| QE_I61 | Condições das salas de aula | 4,12 | 5,17 | 4,96 | −1,04 | < 0,001 | −0,46 |
+| QE_I37 | Relação professor-aluno | 3,90 | 4,90 | 4,52 | −1,00 | < 0,001 | −0,38 |
+
+As 10 questões de 2021 em que a Unifor não difere significativamente de CE demais são, da menor para a maior diferença de média: QE_I43 (extensão, +0,09), QE_I44 (iniciação científica, +0,07), QE_I42 (dedicação, −0,26), QE_I45 (eventos, −0,26), QE_I50 (estágio, −0,29), QE_I46 (representação em órgãos colegiados, −0,34), QE_I36 (aprender e atualizar-se, −0,35), QE_I32 (trabalho em equipe, −0,40), QE_I51 (trabalho de conclusão de curso, −0,45) e QE_I52 (intercâmbio no país, −0,63). Em QE_I52 a diferença é grande, mas o teste, após a correção de Holm, não a distingue do acaso (p = 0,128), com 61 respondentes válidos da Unifor. Em 2017, contra CE demais, as maiores diferenças foram QE_I65 (−2,15), QE_I64 (−2,08) e QE_I61 (−1,96).
+
+**Evolução da Unifor entre 2017 e 2021** (descritiva, sem teste): a média simples das 42 questões passou de 4,13 para 4,24, com alta em 25 questões e queda em 17. Em 2021, a média simples dos demais grupos foi de 4,93 (CE privadas), 4,97 (CE públicas) e 4,78 (Brasil). As maiores altas foram em QE_I64 (biblioteca, de 2,77 para 3,94), QE_I61 (salas de aula, de 3,25 para 4,12), QE_I65 (biblioteca virtual, de 2,85 para 3,36), QE_I68 (refeitório, cantina e banheiros, de 4,12 para 4,62) e QE_I59 (funcionários de apoio, de 3,44 para 3,93). As maiores quedas foram em QE_I53 (intercâmbio fora do país, de 3,95 para 2,47), QE_I52 (intercâmbio no país, de 3,75 para 3,30), QE_I37 (relação professor-aluno, de 4,21 para 3,90) e QE_I31 (consciência ética, de 4,52 para 4,22).
+
+### Interpretação
+
+- **Pontos fortes da Unifor:** iniciação científica, extensão, dedicação exigida pelo curso e trabalho em equipe ficam entre as questões mais bem avaliadas, e iniciação científica, dedicação e trabalho em equipe aparecem entre as 5 melhores nas duas edições. Nessas questões a Unifor tem nota igual à do restante do Ceará (em extensão e iniciação científica em 2021, ligeiramente acima, sem significância); ela não fica à frente.
+- **Pontos fracos:** os equipamentos das aulas práticas (QE_I62) e as atividades práticas suficientes (QE_I48) estão entre as 5 piores questões nas duas edições. Os ambientes das aulas práticas (QE_I63) também têm uma das maiores diferenças em relação ao Ceará. Em 2021, essas três questões ficam de 1,07 a 1,43 ponto abaixo de CE demais.
+- **Biblioteca virtual:** é a questão com a maior diferença em relação ao Ceará em 2021 (−1,88) e também a de maior proporção de "não sei" ou "não se aplica" (42,0%). A média vale só para 47 respondentes. O dado não permite separar se o recurso é pouco usado, pouco divulgado ou avaliado de forma negativa.
+- **Intercâmbio:** é a questão mais mal avaliada em 2021 (2,47 fora do país, 3,30 no país) e piorou desde 2017. As médias também são baixas nos outros grupos (3,2 a 4,0), então é um ponto fraco comum aos cursos, não só da Unifor. Em 2021, 28,4% (fora do país) e 24,7% (no país) dos respondentes marcaram "não sei" ou "não se aplica".
+- **Resposta à pergunta do plano de trabalho:** a avaliação dos concluintes da Unifor difere da dos demais cursos do Ceará, e sempre para baixo. Em 2021, a nota é menor em 32 das 42 questões contra CE demais (35 em 2017), e a diferença se concentra em infraestrutura, apoio e atividades práticas.
+- **Tendência:** entre 2017 e 2021 a infraestrutura geral melhorou (biblioteca, salas de aula, funcionários de apoio), mas a distância para o Ceará continua grande nesses itens. Como as edições têm grupos diferentes de concluintes, a comparação descreve médias por edição e não acompanha os mesmos estudantes.
+
+Possíveis encaminhamentos para a coordenação (a validar na reunião de apresentação dos resultados):
+
+- Verificar com os estudantes o que está por trás das notas baixas em equipamentos e ambientes das aulas práticas e em atividades práticas, que são os itens com maior diferença em relação aos outros cursos do Ceará.
+- Conferir se a biblioteca virtual é divulgada e usada pelos estudantes, já que 42,0% dos respondentes não souberam ou não consideraram o item aplicável.
+- Rever como as oportunidades de intercâmbio e de estágio no país e no exterior são apresentadas, pois a nota piorou desde 2017 e a proporção de "não sei" é alta.
+- Manter e divulgar o que está bem avaliado (iniciação científica, extensão, trabalho em equipe), que já está no nível do restante do Ceará.
+
+Limitações:
+
+- Os valores-p tratam os estudantes como independentes, mas eles estão agrupados em cursos, e os grupos de comparação do Ceará têm poucos cursos. Por isso, os valores-p tendem a ser otimistas. O tamanho do efeito e a diferença de média ajudam a julgar se a diferença importa na prática.
+- O grupo "CE privadas" é pequeno e concentrado em uma instituição (ver a seção de perfil). Diferenças contra ele devem ser lidas com cautela.
+- A média de uma questão vale só para quem a avaliou. Questões com muitas respostas "não sei" ou "não se aplica", como QE_I65, QE_I53 e QE_I52, têm menos respondentes válidos e conclusões mais frágeis.
+- São dados de percepção de concluintes em duas edições. Eles indicam associação e diferença entre grupos, não causa.
